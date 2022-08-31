@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <!-- Tab customization-->
+    <title>Sensor de Temperatura</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <!-- JQuery-->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}" ></script>   
+    <!-- Bootstrap-->
+    <script type="text/javascript" src="{{ url_for('static', filename='js/popper.min.js') }}" ></script>    
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet" media="screen">
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}" ></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SocketIO-->
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}" integrity="sha384-7EyYLQZgWBi67fBtVxw60/OWl1kjsfrPFcaU0pp0nAh+i8FD068QogUvg85Ewy1k" crossorigin="anonymous"></script>
+    <!-- ChartJS-->    
+    <script type="text/javascript" src="{{ url_for('static', filename='js/moment.js') }}" ></script>
+    <script type="module" src="{{ url_for('static', filename='js/chart.js') }}" ></script>
+    <script type="module" src="{{ url_for('static', filename='js/chartjs-adapter-date-fns.bundle.min.js') }}" ></script>
+
+    <!-- Client-->
+    <script src="{{ url_for('static', filename='js/client.js') }}"></script>
+
+
+    <style>
+        html, body { margin: 0; background-color: #e9ecef; height: 100%;   
+          }
+        .img {
+            position: relative;
+            margin: 0;
+            }
+        .img + .tooltip-content {
+            display: none;
+            }
+        .img:hover + .tooltip-content {
+            display: inline;
+            text-align: center;
+            background-color:#1d1d1d;
+            border: 2px solid #1b1b1b;
+            font-size: 15px;
+            margin: 0;
+            padding: 5px;
+            position: fixed;
+            border-radius: 25px;
+            font-weight: normal;
+            color:#e0e0e0;
+            z-index: 1;   
+        }
+    </style>
+
+</head>
+
+<body style="position: relative; bottom: 0px; top: 0px; left: 0px; right: 0px;">
+
+    <header class="text-center">
+        <div class="navbar-center navbar-dark bg-dark box-shadow">
+            <div class="container-fluid">
+                <a href="#" class="navbar-brand">
+                    <h1 class="jumbotron-heading">Sensor de Temperatura</h1>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main role="main">
+        <div class="container-fluid	text-center">           
+                <div class="row">
+                    <div class="col-lg-6" >
+                        <h1 class="h2">Temperatura en tiempo real&nbsp;<img src="{{ url_for('static', filename='img/info.svg') }}" class="text-center img" style="width:18px;height:18px;padding:0;margin:0;">
+                            <div class="tooltip-content">
+                                El valor numérico muestra la temperatura actual del sensor (se actualiza cada segundo) y se vuelve de color rojo cuando se encuentra en estado de cocción. En la gráfica aparecen los ultimos 60 puntos (~30 minutos). Cada punto se guarda en intervalos de 30 segundos, excepto al activar y desactivar la cocción, que se guardan de forma inmediata.
+                            </div></img></h1>                  
+                        <h1 id="log" class="h2 text-center"><img src="{{ url_for('static', filename='img/loading.gif') }}" class="text-center img" style="width:30px;height:30px;padding:0;margin:0;"> ºC</h1> 
+                    </div>
+
+                    <div class="col-lg-6">
+                        <h1 class="h2">Temperatura día&nbsp;<img src="{{ url_for('static', filename='img/info.svg') }}" class="text-center img img_large" style="width:18px;height:18px;padding:0;margin:0;">
+                            <div class="tooltip-content">
+                                En esta gráfica se muestran las temperaturas del día seleccionado. Para seleccionar un dia simplemente hay que pulsar la fecha situada debajo de este titulo.
+                                El boton de la derecha permite recargar la misma fecha (por ejemplo, si es el día actual y hay nuevos datos). Esta gráfica no se actualiza automaticamente.
+                            </div></img></h1>
+                        <div class="text-center">
+                            <input type="date" id="day_chart" name="day_chart" class="btn btn-sm btn-outline-secondary"  onclick="openDateDialog()">  
+                            <button onclick="refreshDateChart()" class="btn btn-secondary my-2" style="width:35px;height:35px;padding:0" >
+                                <img src="{{ url_for('static', filename='img/arrow-clockwise.svg') }}" style="width:25px;height:25px;padding:0"/>
+                            </button>
+                        </div>
+                    </div>
+                </div>            
+
+            <div class="row" >
+                <div class="col-lg-6" style="height: 400px;">
+                    <canvas id="realtimechart"></canvas>
+                    <h1 id="timelog_chart" style='font-size:10px'></h1>
+                </div>
+                <div class="col-lg-6" style="height: 400px;">
+                    <canvas id="datechart"></canvas>
+                </div>
+            </div>
+
+            <hr class="featurette-divider">
+            <div class="container-fluid text-center">
+                <button onclick="download()" class="btn btn-secondary my-2">
+                    <img src="{{ url_for('static', filename='img/box-arrow-in-down.svg') }}" width="20" height="20" class="text-center" style="width:18px;height:18px;padding:0"/>  Descargar mes         
+                </button>
+                <input type="month" id="month_download" name="month_download" class="btn btn-sm btn-outline-secondary" onclick="openMonthDialog()">
+                <img src="{{ url_for('static', filename='img/info.svg') }}" class="text-center img img_bottom" style="width:18px;height:18px;padding:0;margin:0;">
+                    <div class="tooltip-content">
+                        Aquí se puede descargar un fichero de tipo ".csv" con todos los datos del mes seleccionado. Este fichero se puede abrir directamente con Excel o con el Bloc de notas. Se añaden nuevos datos al mes actual cada 30 segundos.
+                    </div></img>
+
+                &nbsp &nbsp &nbsp &nbsp
+
+                <button onclick="day_download()" class="btn btn-secondary my-2">
+                    <img src="{{ url_for('static', filename='img/box-arrow-in-down.svg') }}" width="20" height="20" class="text-center" style="width:18px;height:18px;padding:0"/>  Descargar día         
+                </button>
+                <input type="date" id="day_download" name="day_download" class="btn btn-sm btn-outline-secondary" onclick="openDayDialog()">
+                <img src="{{ url_for('static', filename='img/info.svg') }}" class="text-center img img_bottom" style="width:18px;height:18px;padding:0;margin:0;">
+                    <div class="tooltip-content">
+                        Aquí se puede descargar un fichero de tipo ".csv" con todos los datos del día seleccionado. Este fichero se puede abrir directamente con Excel o con el Bloc de notas. Se añaden nuevos datos al día actual cada 30 segundos.
+                    </div></img>
+            </div>
+
+        </div>
+        <hr class="featurette-divider">
+        <footer class="container-fuild text-center">
+            <p>© 2022 Óscar Díaz Pedrayes</p>
+      </footer>
+    </main>
+
+</body>
+</html>

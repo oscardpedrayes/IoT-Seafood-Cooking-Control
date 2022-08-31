@@ -1,0 +1,9 @@
+numpy
+flask
+flask_socketio
+pandas
+pt100
+adafruit-circuitpython-max31865
+gevent
+gevent-websocket
+pyopenssl
